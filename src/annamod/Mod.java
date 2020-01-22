@@ -6,6 +6,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.SocketException;
 
 import net.basdon.anna.api.*;
 import net.basdon.anna.api.IAnna.Output;
@@ -67,7 +68,6 @@ boolean on_enable(IAnna anna, char[] replytarget)
 	this.anna.join(this.outtarget);
 	try {
 		this.sockout = new DatagramSocket();
-		this.sockin = new DatagramSocket(5056);
 		this.recvthread = new RecvThread();
 		this.recvthread.start();
 		return true;
@@ -151,7 +151,7 @@ void on_message(User user, char[] target, char[] replytarget, char[] msg)
 
 void send_to_pl(byte[] b)
 {
-	if (sockout != null) {
+	if (this.sockout != null) {
 		try {
 			this.sockout.send(new DatagramPacket(b, b.length, ADDR_LOCAL, 5055));
 		} catch (Exception e) {
@@ -165,19 +165,33 @@ private class RecvThread extends Thread
 	public void run()
 	{
 		byte buf[] = new byte[200];
-		for (;;) {
-			DatagramPacket packet = new DatagramPacket(buf, buf.length);
-			try {
-				sockin.receive(packet);
-				if (packet.getAddress().isLoopbackAddress()) {
-					String msg = new String(buf, 0, packet.getLength());
-					anna.privmsg(outtarget, msg.toCharArray());
+		try {
+			for (;;) {
+				try (DatagramSocket sock = new DatagramSocket(5056)) {
+					sockin = sock;
+					for (;;) {
+						DatagramPacket pckt;
+						pckt = new DatagramPacket(buf, buf.length);
+						sock.receive(pckt);
+						if (pckt.getAddress().isLoopbackAddress()) {
+							String msg;
+							msg = new String(buf, 0, pckt.getLength());
+							anna.privmsg(outtarget, msg.toCharArray());
+						}
+					}
+				} catch (SocketException e) {
+					if (this.isInterrupted()) {
+						return;
+					}
+					anna.log_warn("plchat socket closed, restarting it");
+				} catch (InterruptedIOException e) {
+					return;
+				} catch (IOException e) {
+					anna.log_warn("plchat socket closed, restarting it");
 				}
-			} catch (InterruptedIOException e) {
-				return;
-			} catch (Throwable e) {
-				e.printStackTrace();
+				Thread.sleep(3000);
 			}
+		} catch (InterruptedException e) {
 		}
 	}
 }
