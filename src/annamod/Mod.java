@@ -176,7 +176,13 @@ private class RecvThread extends Thread
 						if (pckt.getAddress().isLoopbackAddress()) {
 							String msg;
 							msg = new String(buf, 0, pckt.getLength());
-							anna.privmsg(outtarget, msg.toCharArray());
+							char[] c = msg.toCharArray();
+							for (int i = 0; i < c.length; i++) {
+								if (c[i] == '\n' || c[i] == '\r') {
+									c[i] = '#';
+								}
+							}
+							anna.privmsg(outtarget, c);
 						}
 					}
 				} catch (SocketException e) {
