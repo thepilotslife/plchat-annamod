@@ -42,7 +42,7 @@ String getName()
 public
 String getVersion()
 {
-	return "0a";
+	return "1a";
 }
 
 @Override
@@ -93,6 +93,21 @@ void on_disable()
 			this.sockout.close();
 		} catch (Throwable t) {}
 	}
+}
+
+@Override
+public
+boolean on_command(
+	User user, char[] target, char[] replytarget, char[] message, char[] cmd, char[] params)
+{
+	if (user != null &&
+		strcmp(this.outtarget, target) &&
+		strcmp(cmd, 'n','o','r','t','h','p','o','l','e'))
+	{
+		String m = "MODE " + new String(this.outtarget) + " +v " + new String(user.nick);
+		this.anna.send_raw(m.toCharArray(), 0, m.length());
+	}
+	return false;
 }
 
 @Override
