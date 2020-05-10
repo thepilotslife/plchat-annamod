@@ -6,6 +6,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.SocketException;
 
 import net.basdon.anna.api.*;
@@ -30,6 +31,7 @@ private IAnna anna;
 private char[] outtarget;
 private DatagramSocket sockout, sockin;
 private RecvThread recvthread;
+private PlayersQuery querythread;
 
 @Override
 public
@@ -42,7 +44,7 @@ String getName()
 public
 String getVersion()
 {
-	return "2a";
+	return "3a";
 }
 
 @Override
@@ -83,6 +85,9 @@ void on_disable()
 	if (this.recvthread != null && this.recvthread.isAlive()) {
 		this.recvthread.interrupt();
 	}
+	if (this.querythread != null && this.querythread.isAlive()) {
+		this.querythread.interrupt();
+	}
 	if (this.sockin != null) {
 		try {
 			this.sockin.close();
@@ -106,6 +111,16 @@ boolean on_command(
 	{
 		String m = "MODE " + new String(this.outtarget) + " +v " + new String(user.nick);
 		this.anna.send_raw(m.toCharArray(), 0, m.length());
+	}
+	if (user != null &&
+		strcmp(this.outtarget, target) &&
+		strcmp(cmd, 'p','l','a','y','e','r','s'))
+	{
+		if (this.querythread != null && this.querythread.isAlive()) {
+			this.querythread.interrupt();
+		}
+		this.querythread = new PlayersQuery();
+		this.querythread.start();
 	}
 	return false;
 }
@@ -229,6 +244,65 @@ private class RecvThread extends Thread
 				Thread.sleep(3000);
 			}
 		} catch (InterruptedException e) {
+		}
+	}
+}
+
+private class PlayersQuery extends Thread
+{
+	@Override
+	public void run()
+	{
+		try (DatagramSocket s = new DatagramSocket(new InetSocketAddress("0.0.0.0", 0))) {
+			InetSocketAddress addr = new InetSocketAddress("51.178.2.56", 7777);
+			byte[] data = new byte[1000];
+			data[0] = 'S';
+			data[1] = 'A';
+			data[2] = 'M';
+			data[3] = 'P';
+			data[4] = 51;
+			data[5] = (byte) 178;
+			data[6] = 2;
+			data[7] = 56;
+			data[8] = 0x61;
+			data[9] = 0x1E;
+			data[10] = 'c';
+			s.send(new DatagramPacket(data, 11, addr));
+			DatagramPacket pckt = new DatagramPacket(data, data.length);
+			s.receive(pckt);
+			int numplayers = (data[12] << 8) | data[11];
+			if (numplayers == 0) {
+				anna.privmsg(outtarget, "0 players".toCharArray());
+				return;
+			}
+			StringBuilder sb = new StringBuilder();
+			sb.append(numplayers).append(" players:");
+			int pos = 13;
+			for (int i = 0; i < numplayers; i++) {
+				int namelen = data[pos];
+				if (namelen < 1) {
+					break;
+				}
+				String playername = new String(data, pos + 1, namelen);
+				int score =
+					((((int) data[pos + 1 + namelen + 3]) & 0xFF) << 24) |
+					((((int) data[pos + 1 + namelen + 2]) & 0xFF) << 16) |
+					((((int) data[pos + 1 + namelen + 1]) & 0xFF) << 8) |
+					((((int) data[pos + 1 + namelen + 0]) & 0xFF) << 0);
+				sb.append(' ');
+				sb.append(playername).append('(').append(score).append(')');
+				pos += 5 + namelen;
+			}
+			anna.privmsg(outtarget, chars(sb));
+		} catch (SocketException e) {
+			if (this.isInterrupted()) {
+				return;
+			}
+			anna.log_warn("failed samp query");
+		} catch (InterruptedIOException e) {
+			return;
+		} catch (IOException e) {
+			anna.log_warn("failed samp query");
 		}
 	}
 }
