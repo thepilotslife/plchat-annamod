@@ -42,7 +42,7 @@ String getName()
 public
 String getVersion()
 {
-	return "1a";
+	return "2a";
 }
 
 @Override
@@ -146,18 +146,34 @@ void on_message(User user, char[] target, char[] replytarget, char[] msg)
 		(cu = this.anna.find_user(target, user.nick)) != null)
 	{
 		if (has_user_mode_or_higher(cu, this.anna.get_user_channel_modes(), 'v')) {
-			byte[] b = new byte[user.nick.length + msg.length + 6];
-			b[0] = 'I';
-			b[1] = 'R';
-			b[2] = 'C';
-			b[3] = ' ';
-			for (int i = 0; i < user.nick.length; i++) {
-				b[4 + i] = (byte) user.nick[i];
-			}
-			b[4 + user.nick.length] = ':';
-			b[5 + user.nick.length] = ' ';
-			for (int i = 0; i < msg.length; i++) {
-				b[6 + user.nick.length + i] = (byte) msg[i];
+			byte[] b;
+			if (msg.length > 0 && msg[0] == '!') {
+				byte msglen = (byte) msg.length;
+				if (msglen < 0) msglen = 127;
+				b = new byte[1 + 1 + 1 + user.nick.length + msglen];
+				b[0] = '!';
+				b[1] = (byte) user.nick.length;
+				b[2] = msglen;
+				for (int i = 0; i < user.nick.length; i++) {
+					b[3 + i] = (byte) user.nick[i];
+				}
+				for (int i = 0; i < msglen; i++) {
+					b[3 + user.nick.length + i] = (byte) msg[i];
+				}
+			} else {
+				b = new byte[user.nick.length + msg.length + 6];
+				b[0] = 'I';
+				b[1] = 'R';
+				b[2] = 'C';
+				b[3] = ' ';
+				for (int i = 0; i < user.nick.length; i++) {
+					b[4 + i] = (byte) user.nick[i];
+				}
+				b[4 + user.nick.length] = ':';
+				b[5 + user.nick.length] = ' ';
+				for (int i = 0; i < msg.length; i++) {
+					b[6 + user.nick.length + i] = (byte) msg[i];
+				}
 			}
 			send_to_pl(b);
 		}
