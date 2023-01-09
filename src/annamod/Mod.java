@@ -8,6 +8,8 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 import net.basdon.anna.api.*;
 import net.basdon.anna.api.IAnna.Output;
@@ -44,7 +46,7 @@ String getName()
 public
 String getVersion()
 {
-	return "3a";
+	return "3b";
 }
 
 @Override
@@ -220,8 +222,9 @@ private class RecvThread extends Thread
 						pckt = new DatagramPacket(buf, buf.length);
 						sock.receive(pckt);
 						if (pckt.getAddress().isLoopbackAddress()) {
-							String msg;
-							msg = new String(buf, 0, pckt.getLength());
+							Charset cs = StandardCharsets.UTF_8;
+							int len = pckt.getLength();
+							String msg = new String(buf, 0, len, cs);
 							char[] c = msg.toCharArray();
 							for (int i = 0; i < c.length; i++) {
 								if (c[i] == '\n' || c[i] == '\r') {
@@ -285,10 +288,10 @@ private class PlayersQuery extends Thread
 				}
 				String playername = new String(data, pos + 1, namelen);
 				int score =
-					((((int) data[pos + 1 + namelen + 3]) & 0xFF) << 24) |
-					((((int) data[pos + 1 + namelen + 2]) & 0xFF) << 16) |
-					((((int) data[pos + 1 + namelen + 1]) & 0xFF) << 8) |
-					((((int) data[pos + 1 + namelen + 0]) & 0xFF) << 0);
+					(((data[pos + 1 + namelen + 3]) & 0xFF) << 24) |
+					(((data[pos + 1 + namelen + 2]) & 0xFF) << 16) |
+					(((data[pos + 1 + namelen + 1]) & 0xFF) << 8) |
+					(((data[pos + 1 + namelen + 0]) & 0xFF) << 0);
 				sb.append(' ');
 				sb.append(playername).append('(').append(score).append(')');
 				pos += 5 + namelen;
