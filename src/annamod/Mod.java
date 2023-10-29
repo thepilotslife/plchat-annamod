@@ -257,16 +257,16 @@ private class PlayersQuery extends Thread
 	public void run()
 	{
 		try (DatagramSocket s = new DatagramSocket(new InetSocketAddress("0.0.0.0", 0))) {
-			InetSocketAddress addr = new InetSocketAddress("51.178.2.56", 7777);
+			InetSocketAddress addr = new InetSocketAddress("51.210.111.38", 7777);
 			byte[] data = new byte[1000];
 			data[0] = 'S';
 			data[1] = 'A';
 			data[2] = 'M';
 			data[3] = 'P';
 			data[4] = 51;
-			data[5] = (byte) 178;
-			data[6] = 2;
-			data[7] = 56;
+			data[5] = (byte) 210;
+			data[6] = (byte) 111;
+			data[7] = 38;
 			data[8] = 0x61;
 			data[9] = 0x1E;
 			data[10] = 'c';
